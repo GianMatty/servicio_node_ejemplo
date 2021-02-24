@@ -1,0 +1,58 @@
+import express from 'express';
+
+import {getBillingCyclesRoute} from '../controllers/getBillingCyclesRoute'
+import {getInvoicesRoute} from '../controllers/getInvoicesRoute'
+
+import healthController from '../controllers/health';
+
+const router = express.Router();
+router.get('/phone-numbers/:phone_number/billing-cycles', getBillingCyclesRoute)
+router.get('/phone-numbers/:phone_number/invoices', getInvoicesRoute)
+
+
+
+
+router.get('/health', healthController.healthCheck);
+
+export default router;
+
+
+////////////////////////////////////////////////////////
+
+import {Request, Response, NextFunction} from 'express';
+import {getBillingCycles} from '../services/getBillingCycles';
+
+export const getBillingCyclesRoute = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        await getBillingCycles(req).then((response: any) => {
+            res.status(response.status).send(response.data);
+        });
+    }catch (e) {
+        next(e);
+    }
+};
+
+
+/////////////////////////////////////////////////
+
+import {logger} from '../configuration/log4js';
+import {environment} from '../configuration/environment';
+import {Request} from 'express';
+import functions from '../utils/functions';
+const axios = require('axios').default;
+let invoiceB2BUri: string;
+
+export const getBillingCycles = async (req: Request) => {
+    
+        const headers = await functions.setHeaders();
+        invoiceB2BUri = `${environment.BILLING_B2B_SERVICE_URL}/${req.params.phone_number}/${environment.BILLING_B2B_SERVICE_ULTIMAS_FACTURAS}`;
+        const { data: data, status } = await axios.get(invoiceB2BUri, {headers})
+        logger.info(`\nURL: ${invoiceB2BUri}\nMETHOD: GET\nDATA: ${JSON.stringify(data)}`);
+        const returnResponse = {
+            data: data,
+            status
+        }
+        return returnResponse;
+   
+};
+
